@@ -1,0 +1,6 @@
+pymysql
+pandas
+sqlalchemy
+python-dotenv
+unicodedata
+numpy
