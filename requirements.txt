@@ -2,5 +2,5 @@ pymysql
 pandas
 sqlalchemy
 python-dotenv
-unicodedata
 numpy
+mysql-connector-python
