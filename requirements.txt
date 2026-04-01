@@ -8,3 +8,4 @@ python-dotenv==1.2.2
 six==1.17.0
 SQLAlchemy==2.0.48
 typing_extensions==4.15.0
+openpyxl==3.1.5
