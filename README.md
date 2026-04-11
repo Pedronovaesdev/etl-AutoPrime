@@ -50,6 +50,47 @@ A tabela de origem `vendas` contém as seguintes colunas:
 
 O projeto processa **vendas realizadas entre 2000 e 2014**, filtrando os dados na origem para otimizar o consumo de memória.
 
+## Estrutura do repositório (`src/`)
+
+O código está organizado em três áreas: **carregamento** do schema no MySQL, **ETL** (extrair → transformar → carregar no DW) e **visualização** (dashboard Streamlit).
+
+```
+projeto-laboratorio/
+├── docker-compose.yaml          # MySQL do DW (porta 3306)
+├── requirements.txt
+├── .env                         # Credenciais (não versionar)
+├── load.py                      # Atalho → cria tabelas no DW
+├── tratamento.py                # Atalho → pipeline ETL
+├── dashboard_dw.py              # Atalho → inicia o Streamlit
+├── README.md
+└── src/
+    ├── carregamento/            # DDL / tabelas dimensionais e fato
+    │   └── load_dw_schema.py    # criar_data_warehouse()
+    ├── etl/                     # Pipeline Bronze → Silver → Gold (pandas + SQLAlchemy)
+    │   ├── config.py            # Engines SQLAlchemy (origem + DW)
+    │   ├── extract.py           # Bronze — leitura na origem
+    │   ├── mapeamentos.py       # Mapa estado → região
+    │   ├── transform.py         # Silver — pandas
+    │   ├── load_to_dw.py        # Gold — to_sql no DW
+    │   └── elt.py               # Orquestra extract → transform → load_to_dw
+    └── visualizacao/            # Dashboard
+        ├── queries.py           # SQL do star schema
+        ├── database.py          # Conexão e leitura do fato
+        ├── preparacao.py        # Tipos, colunas derivadas, filtros
+        ├── kpis.py              # Métricas e cards
+        ├── graficos_enunciado.py
+        ├── graficos_extras.py
+        └── app.py               # Entrada Streamlit (layout e orquestração)
+```
+
+Equivalente por módulo:
+
+| Pasta | Função |
+|--------|--------|
+| `src/carregamento` | Cria `Dim_*` e `Fato_Vendas_Carros` no MySQL local (Docker). |
+| `src/etl` | Lê a origem (`DB_*`) com **pandas/SQLAlchemy**, transforma e grava no DW (`DW_*`). |
+| `src/visualizacao` | Lê o DW e exibe o painel interativo. |
+
 ## 🛠️ Pré-requisitos de Instalação
 
 Antes de executar o projeto, você precisa ter instalado:
@@ -60,15 +101,13 @@ Verifique se o Python está instalado:
 python --version
 ```
 
-### 2. Dependências do Projeto
+### 2. Docker (MySQL do DW)
 
-As seguintes bibliotecas são necessárias:
-- **pandas**: Manipulação e análise de dados
-- **sqlalchemy**: ORM e engine para conexão com banco de dados
-- **pymysql**: Driver MySQL para Python
-- **python-dotenv**: Carregamento de variáveis de ambiente
+O `docker-compose.yaml` sobe o MySQL onde ficam as tabelas do data warehouse. É necessário ter **Docker Desktop** (ou Docker Engine) instalado.
 
-Todas as dependências estão listadas em `requirements.txt`.
+### 3. Dependências Python
+
+Principais pacotes (lista completa em `requirements.txt`): **pandas**, **SQLAlchemy**, **PyMySQL**, **python-dotenv**, **mysql-connector-python** (DDL), **streamlit**, **plotly**, **matplotlib**, **seaborn**.
 
 ## 📦 Instalação e Configuração
 
@@ -86,67 +125,128 @@ Execute o comando abaixo para instalar todas as bibliotecas necessárias:
 pip install -r requirements.txt
 ```
 
-Este comando instala:
-```
-pymysql
-pandas
-sqlalchemy
-python-dotenv
-```
+(Veja `requirements.txt` para versões fixas de todos os pacotes.)
 
 ### Passo 3: Configurar Variáveis de Ambiente
 
-Crie um arquivo `.env` na raiz do projeto com as seguintes variáveis:
+Crie um arquivo `.env` na raiz do projeto.
 
+**MySQL no Docker** (usado pelo Compose — ajuste senhas conforme sua máquina):
+
+```env
+MYSQL_ROOT_PASSWORD=sua_senha_root
+MYSQL_DATABASE=dw_autoprime
+MYSQL_USER=engenheiro
+MYSQL_PASSWORD=senha123
 ```
-DB_USER = "seu_usuario"
-DB_PASSWORD = "sua_senha"
-DB_HOST = "seu_host_mysql"
-DB_PORT = "3306"
-DB_NAME = "nome_do_banco"
-TABLE_NAME = "vendas"
+
+**Banco de origem** (onde está a tabela `vendas`; o ETL lê daqui):
+
+```env
+DB_USER=seu_usuario
+DB_PASSWORD=sua_senha
+DB_HOST=host_do_mysql_origem
+DB_PORT=3306
+DB_NAME=nome_do_banco
 ```
 
-### Passo 4: Verificar Conectividade
+**DW** (opcional; se omitir, usam-se os mesmos padrões dos scripts: `localhost`, `engenheiro`, `senha123`, `dw_autoprime`):
 
-O script carregará automaticamente as variáveis do arquivo `.env` usando a função `load_dotenv()`.
+```env
+DW_HOST=localhost
+DW_PORT=3306
+DW_USER=engenheiro
+DW_PASSWORD=senha123
+DW_NAME=dw_autoprime
+```
 
-## 🚀 Como Usar
+**Regras extras na transformação (opcional — padrões já alinham ao enunciado):**
 
-### Executar o Script Principal
+```env
+PLAUSIBLE_YEAR_MIN=1980
+PLAUSIBLE_YEAR_ABS_MAX=2015
+MAX_VEHICLE_AGE_YEARS=50
+MMR_PRICE_RATIO_MIN=0.35
+MMR_PRICE_RATIO_MAX=2.0
+SELLER_FUZZY_DEDUP=false
+SELLER_FUZZY_THRESHOLD=0.88
+SELLER_FUZZY_MAX_UNIQUES=350
+SILVER_LOG_FILTERS=true
+```
 
-Para executar o processamento completo de dados, execute:
+`SELLER_FUZZY_DEDUP` fica **desligado** por padrão: com muitas lojas distintas o algoritmo fica muito lento. Ligue só com `true` em bases menores (ou aumente `SELLER_FUZZY_MAX_UNIQUES` com cautela).
+
+Os módulos carregam o `.env` com `load_dotenv()`.
+
+## Como rodar o projeto
+
+Execute os passos **na raiz do repositório** (`projeto-laboratorio`), com o ambiente virtual ativado se estiver usando um.
+
+Opcional — criar e ativar um `venv` (PowerShell):
+
+```powershell
+python -m venv venv
+.\venv\Scripts\Activate.ps1
+pip install -r requirements.txt
+```
+
+### 1. Subir o MySQL (DW)
 
 ```bash
-python projeto_laboratorio_de_banco.py
+docker compose up -d
 ```
 
-Este comando irá:
+Aguarde o container ficar pronto antes de criar tabelas ou rodar o ETL.
 
-1. **Carregar variáveis de ambiente** do arquivo `.env`
-2. **Conectar ao banco de dados MySQL** usando as credenciais fornecidas
-3. **Extrair dados** da tabela `vendas` para o período 2000-2014
-4. **Criar o DataFrame Bronze** - dados brutos extraídos
-5. **Processar a camada Silver** - dados limpos e transformados
-6. **Aplicar transformações**:
-   - Padronização de texto
-   - Tratamento de valores nulos
-   - Enriquecimento geográfico
-   - Processamento de datas
-   - Validação e classificação de veículos
+### 2. Instalar dependências
 
-### Saída Esperada
-
-O script irá imprimir as primeiras 10 linhas do DataFrame nas fases Bronze e Silver:
-
-```
-   id  ano     make  model  ...  CATEGORIA_CARRO FAIXA_ODOMETRO
-0   1  2010   HONDA  CIVIC  ...            USADO      10K-50K
-1   2  2005   FORD  FOCUS  ...            USADO      50K-100K
-...
+```bash
+pip install -r requirements.txt
 ```
 
-## 📝 Transformações e Lógica de Negócio
+### 3. Criar as tabelas no DW
+
+```bash
+python load.py
+```
+
+Ou, equivalente:
+
+```bash
+python -m src.carregamento.load_dw_schema
+```
+
+### 4. Extrair, transformar e carregar no DW (ETL)
+
+Garanta que o MySQL de **origem** (`DB_*`) está acessível e contém a tabela `vendas`. O pipeline usa **pandas** e **SQLAlchemy** (`read_sql` / `to_sql`).
+
+```bash
+python tratamento.py
+```
+
+Ou:
+
+```bash
+python -m src.etl.elt
+```
+
+### 5. Abrir o dashboard (Streamlit)
+
+Use o arquivo da **raiz** para o Python encontrar o pacote `src`:
+
+```bash
+streamlit run dashboard_dw.py
+```
+
+O navegador abre em `http://localhost:8501`.
+
+**Ordem resumida:** Docker → `pip install` → `load.py` → `tratamento.py` → `streamlit run dashboard_dw.py`.
+
+### Saída esperada no ETL
+
+O terminal exibe uma amostra dos dados extraídos e mensagens de progresso da carga nas dimensões e na fato. No dashboard, os gráficos dependem de haver dados já carregados no DW.
+
+## Transformações e Lógica de Negócio
 
 ### 1. Limpeza de Texto
 
@@ -220,18 +320,7 @@ Os veículos são agrupados por quilometragem:
 - **50K-100K**: De 50.000 a 100.000 km
 - **100K+**: Acima de 100.000 km
 
-## 📂 Estrutura de Arquivos
-
-```
-projeto-laboratorio/
-├── projeto_laboratorio_de_banco.py   # Script principal
-├── requirements.txt                   # Dependências Python
-├── .env                              # Variáveis de ambiente (não versionado)
-├── .env.example                      # Exemplo de arquivo .env
-└── README.md                         # Este arquivo
-```
-
-## ⚠️ Observações Importantes
+# Observações Importantes
 
 ### Segurança
 - **Nunca commit o arquivo `.env`** com credenciais reais no repositório
