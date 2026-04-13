@@ -52,7 +52,6 @@ def main() -> None:
     meses_all = sorted(df["numero_mes"].dropna().astype(int).unique().tolist())
     trim_all = sorted(df["trimestre"].dropna().astype(int).unique().tolist())
     sem_all = sorted(df["semestre"].dropna().astype(int).unique().tolist())
-    regioes_all = sorted(df["regiao_loja"].dropna().unique().tolist())
 
     with st.sidebar:
         st.header("Filtros de negócio")
@@ -65,7 +64,6 @@ def main() -> None:
         )
         sel_trim = st.multiselect("Trimestre", options=trim_all, default=trim_all)
         sel_sem = st.multiselect("Semestre", options=sem_all, default=sem_all)
-        sel_regioes = st.multiselect("Região da loja", options=regioes_all, default=regioes_all)
         st.divider()
         top_marcas = st.slider("Top N marcas (análises adicionais)", 5, 25, 10)
 
@@ -77,10 +75,8 @@ def main() -> None:
         sel_trim = trim_all
     if not sel_sem:
         sel_sem = sem_all
-    if not sel_regioes:
-        sel_regioes = regioes_all
 
-    dff = aplicar_filtros(df, sel_anos, sel_meses, sel_trim, sel_sem, sel_regioes)
+    dff = aplicar_filtros(df, sel_anos, sel_meses, sel_trim, sel_sem)
 
     if dff.empty:
         st.warning("Nenhum registro com os filtros escolhidos.")
