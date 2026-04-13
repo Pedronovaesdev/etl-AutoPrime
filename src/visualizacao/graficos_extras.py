@@ -38,18 +38,18 @@ def render_analises_adicionais(dff, top_marcas: int) -> None:
         fig2.update_layout(xaxis_tickangle=-45, height=400)
         st.plotly_chart(fig2, use_container_width=True)
 
-    with col_b:
-        st.subheader("Receita por região da loja")
-        reg = dff.groupby("regiao_loja", as_index=False)["receita"].sum().sort_values("receita", ascending=True)
-        fig3 = px.bar(
-            reg,
-            x="receita",
-            y="regiao_loja",
-            orientation="h",
-            labels={"regiao_loja": "Região", "receita": "Receita (US$)"},
-        )
-        fig3.update_layout(height=400)
-        st.plotly_chart(fig3, use_container_width=True)
+    # with col_b:
+    #     st.subheader("Receita por região da loja")
+    #     reg = dff.groupby("regiao_loja", as_index=False)["receita"].sum().sort_values("receita", ascending=True)
+    #     fig3 = px.bar(
+    #         reg,
+    #         x="receita",
+    #         y="regiao_loja",
+    #         orientation="h",
+    #         labels={"regiao_loja": "Região", "receita": "Receita (US$)"},
+    #     )
+    #     fig3.update_layout(height=400)
+    #     st.plotly_chart(fig3, use_container_width=True)
 
     st.subheader("Top marcas por receita")
     marca_rec = (
