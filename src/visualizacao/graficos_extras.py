@@ -114,19 +114,3 @@ def render_analises_adicionais(dff, top_marcas: int) -> None:
     )
     fig7.update_layout(xaxis_type="category", height=450)
     st.plotly_chart(fig7, use_container_width=True)
-
-    st.subheader("Receita por estado (Top 15)")
-    est = (
-        dff.groupby("nome_estado_loja", as_index=False)["receita"]
-        .sum()
-        .sort_values("receita", ascending=False)
-        .head(15)
-    )
-    fig8 = px.bar(
-        est,
-        x="nome_estado_loja",
-        y="receita",
-        labels={"nome_estado_loja": "Estado", "receita": "Receita (US$)"},
-    )
-    fig8.update_layout(xaxis_tickangle=-40, height=420)
-    st.plotly_chart(fig8, use_container_width=True)
