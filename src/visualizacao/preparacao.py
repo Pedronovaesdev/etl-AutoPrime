@@ -44,8 +44,7 @@ def aplicar_filtros(
     anos: list,
     meses: list,
     trimestres: list,
-    semestres: list,
-    regioes: list,
+    semestres: list
 ) -> pd.DataFrame:
     d = df.copy()
     if anos:
@@ -56,6 +55,4 @@ def aplicar_filtros(
         d = d[d["trimestre"].isin(trimestres)]
     if semestres:
         d = d[d["semestre"].isin(semestres)]
-    if regioes:
-        d = d[d["regiao_loja"].isin(regioes)]
     return d
