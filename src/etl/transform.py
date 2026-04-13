@@ -145,6 +145,7 @@ def transform_to_silver(df_bronze: pd.DataFrame) -> pd.DataFrame:
         data_limpa = df["saledate"].str.split(" GMT").str[0]
         df["data_venda_dt"] = pd.to_datetime(data_limpa, errors="coerce")
         df["ANO_VENDA"] = df["data_venda_dt"].dt.year
+        df = df[(2000 <= df["ANO_VENDA"]) & (df["ANO_VENDA"] < 2015)]
         df["MES_VENDA"] = df["data_venda_dt"].dt.month
         df["DIA_VENDA"] = df["data_venda_dt"].dt.day
         df["TRIMESTRE"] = df["data_venda_dt"].dt.quarter
